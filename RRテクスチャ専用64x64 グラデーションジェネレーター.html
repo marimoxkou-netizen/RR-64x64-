@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>64x64 Outer-Color Based Gradient Generator</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            background: #1e1e1e;
+            padding: 25px 35px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        }
+        .control-group {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            max-width: 300px;
+        }
+        .control-group label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #b0b0b0;
+        }
+        .rgb-inputs {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .rgb-inputs input {
+            width: 60px;
+            background: #333;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 6px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: 160px;
+            height: 160px;
+            border: 2px solid #555;
+            border-radius: 6px;
+            background: #000;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+            max-width: 300px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>64x64 グラデーションジェネレーター</h2>
+        
+        <canvas id="gradientCanvas" width="64" height="64"></canvas>
+
+        <div class="control-group">
+            <label>外側の色 (Outer RGB)</label>
+            <div class="rgb-inputs">
+                R:<input type="number" id="oR" value="13" min="0" max="255">
+                G:<input type="number" id="oG" value="60" min="0" max="255">
+                B:<input type="number" id="oB" value="140" min="0" max="255">
+            </div>
+        </div>
+
+        <button id="downloadBtn">PNG画像をダウンロード (64x64)</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gradientCanvas');
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const maxRadius = Math.sqrt(centerX * centerX + centerY * centerY);
+
+        const inputs = document.querySelectorAll('input[type="number"]');
+
+        function drawGradient() {
+            // ユーザーが指定した外側の色
+            const outer = { 
+                r: +document.getElementById('oR').value, 
+                g: +document.getElementById('oG').value, 
+                b: +document.getElementById('oB').value 
+            };
+
+            // 外側の色をベースに、あの絶妙なカーブを維持したまま中間色と中心の白を自動計算
+            // 1. 中間2 (外側に近い層)
+            const mid2 = {
+                r: Math.min(255, outer.r + 14),
+                g: Math.min(255, outer.g + 50),
+                b: Math.min(255, outer.b + 57)
+            };
+            // 2. 中間1 (内側に近い層)
+            const mid1 = {
+                r: Math.min(255, outer.r + 28),
+                g: Math.min(255, outer.g + 103),
+                b: 255
+            };
+            // 3. 中心 (真っ白、あるいは外側の色味を少し残した明るいハイライト)
+            const center = {
+                r: Math.min(255, outer.r + 83),
+                g: Math.min(255, outer.g + 180),
+                b: 255
+            };
+
+            const imgData = ctx.createImageData(width, height);
+            const data = imgData.data;
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const dx = x - centerX;
+                    const dy = y - centerY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    let t = Math.min(distance / maxRadius, 1.0);
+
+                    let r, g, b;
+                    // あの元のコードと同じ3段階のグラデーションカーブ構造
+                    if (t < 0.35) {
+                        let p = t / 0.35;
+                        r = Math.round(center.r + (mid1.r - center.r) * p);
+                        g = Math.round(center.g + (mid1.g - center.g) * p);
+                        b = Math.round(center.b + (mid1.b - center.b) * p);
+                    } else if (t < 0.7) {
+                        let p = (t - 0.35) / 0.35;
+                        r = Math.round(mid1.r + (mid2.r - mid1.r) * p);
+                        g = Math.round(mid1.g + (mid2.g - mid1.g) * p);
+                        b = Math.round(mid1.b + (mid2.b - mid1.b) * p);
+                    } else {
+                        let p = (t - 0.7) / 0.3;
+                        r = Math.round(mid2.r + (outer.r - mid2.r) * p);
+                        g = Math.round(mid2.g + (outer.g - mid2.g) * p);
+                        b = Math.round(mid2.b + (outer.b - mid2.b) * p);
+                    }
+
+                    const index = (y * width + x) * 4;
+                    data[index]     = r;
+                    data[index + 1] = g;
+                    data[index + 2] = b;
+                    data[index + 3] = 255;
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        inputs.forEach(input => {
+            input.addEventListener('input', drawGradient);
+        });
+
+        // 初回描画
+        drawGradient();
+
+        // ダウンロード処理
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'custom_gradient_64x64.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+    </script>
+
+</body>
+</html>
