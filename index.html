@@ -113,27 +113,22 @@
         const inputs = document.querySelectorAll('input[type="number"]');
 
         function drawGradient() {
-            // ユーザーが指定した外側の色
             const outer = { 
                 r: +document.getElementById('oR').value, 
                 g: +document.getElementById('oG').value, 
                 b: +document.getElementById('oB').value 
             };
 
-            // 外側の色をベースに、あの絶妙なカーブを維持したまま中間色と中心の白を自動計算
-            // 1. 中間2 (外側に近い層)
             const mid2 = {
                 r: Math.min(255, outer.r + 14),
                 g: Math.min(255, outer.g + 50),
                 b: Math.min(255, outer.b + 57)
             };
-            // 2. 中間1 (内側に近い層)
             const mid1 = {
                 r: Math.min(255, outer.r + 28),
                 g: Math.min(255, outer.g + 103),
                 b: 255
             };
-            // 3. 中心 (真っ白、あるいは外側の色味を少し残した明るいハイライト)
             const center = {
                 r: Math.min(255, outer.r + 83),
                 g: Math.min(255, outer.g + 180),
@@ -151,7 +146,6 @@
                     let t = Math.min(distance / maxRadius, 1.0);
 
                     let r, g, b;
-                    // あの元のコードと同じ3段階のグラデーションカーブ構造
                     if (t < 0.35) {
                         let p = t / 0.35;
                         r = Math.round(center.r + (mid1.r - center.r) * p);
@@ -183,10 +177,8 @@
             input.addEventListener('input', drawGradient);
         });
 
-        // 初回描画
         drawGradient();
 
-        // ダウンロード処理
         document.getElementById('downloadBtn').addEventListener('click', () => {
             const link = document.createElement('a');
             link.download = 'custom_gradient_64x64.png';
